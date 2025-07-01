@@ -10,15 +10,10 @@ The Invoice System is a Python-based application that uses generative AI to extr
 
 ## Getting Started
 
-### Prerequisites
-
-- Python 3.10+
-- Git
-
 ### Cloning the Repository
 
 ```bash
-git clone https://github.com/your-username/invoice_system.git
+git clone https://github.com/abdelrhman-mahmoud/InvoiceReader.git
 cd invoice_system
 ```
 
