@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Extractor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-4xl bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">Invoice Extractor</h1>
+        
+        <div class="mb-6">
+            <div class="flex flex-col sm:flex-row items-center gap-4">
+                <div class="w-full sm:w-auto">
+                    <input 
+                        type="file" 
+                        id="invoice-image"
+                        name="invoice_image" 
+                        accept="image/*" 
+                        class="w-full file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    >
+                    <p id="filename" class="mt-2 text-xs text-gray-600"></p>
+                </div>
+                <button 
+                    type="button" 
+                    id="extract-btn"
+                    class="w-full sm:w-auto bg-blue-600 text-white py-2 px-6 rounded-md hover:bg-blue-700 transition duration-200 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                    <span id="btn-text">Extract</span>
+                    <div id="loading-spinner" class="hidden flex items-center justify-center">
+                        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Processing...
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Image preview -->
+        <div id="preview-container" class="hidden mb-6">
+            <p class="text-sm text-gray-600 mb-2">Invoice Preview:</p>
+            <img id="preview-image" class="w-full max-w-md mx-auto rounded-md shadow-md" alt="Invoice Preview">
+        </div>
+        
+        <!-- Error Display -->
+        <div id="error-message" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 w-full rounded"></div>
+        
+        <!-- Invoice Metadata -->
+        <div id="metadata-section" class="hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Invoice Metadata</h2>
+            <div class="overflow-x-auto mb-6">
+                <table class="w-full border border-gray-200 rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Invoice Number</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Date</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Vendor Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Vendor Address</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Customer Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Customer Address</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Total Amount</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Tax Total</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white">
+                        <tr id="metadata-row">
+                            <td id="invoice-number" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="invoice-date" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="vendor-name" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="vendor-address" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="customer-name" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="customer-address" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="total-amount" class="px-4 py-2 text-sm text-gray-600"></td>
+                            <td id="tax-total" class="px-4 py-2 text-sm text-gray-600"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Invoice Items -->
+        <div id="items-section" class="hidden">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Invoice Items</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full border border-gray-200 rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Item Name</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Quantity</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Unit Price</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Tax Amount</th>
+                            <th class="px-4 py-2 text-left text-sm font-medium text-gray-600">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-tbody" class="bg-white">
+                        <!-- Items will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('invoice-image');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const filenameDisplay = document.getElementById('filename');
+        const extractBtn = document.getElementById('extract-btn');
+        const btnText = document.getElementById('btn-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const errorMessage = document.getElementById('error-message');
+        const metadataSection = document.getElementById('metadata-section');
+        const itemsSection = document.getElementById('items-section');
+
+        let selectedFile = null;
+
+        // Handle file selection
+        fileInput.addEventListener('change', function (event) {
+            const file = event.target.files[0];
+
+            if (file) {
+                selectedFile = file;
+                
+                // Show image preview
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    previewImage.src = e.target.result;
+                    previewContainer.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+
+                // Show filename
+                filenameDisplay.textContent = `Selected file: ${file.name}`;
+                
+                // Enable extract button
+                extractBtn.disabled = false;
+                
+                // Hide previous results/errors
+                hideResults();
+            } else {
+                selectedFile = null;
+                previewImage.src = '';
+                previewContainer.classList.add('hidden');
+                filenameDisplay.textContent = '';
+                extractBtn.disabled = true;
+                hideResults();
+            }
+        });
+
+        // Handle extraction
+        extractBtn.addEventListener('click', async function() {
+            if (!selectedFile) {
+                showError('Please select an invoice image');
+                return;
+            }
+
+            // Show loading state
+            setLoading(true);
+            hideResults();
+
+            try {
+                // Create FormData to send the image file
+                const formData = new FormData();
+                formData.append('invoice_image', selectedFile);
+
+                // Make API call to Flask backend
+                const response = await fetch('/extract', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayResults(result.metadata, result.items);
+                } else {
+                    showError(result.error || 'Error processing invoice. Please try again.');
+                }
+                
+            } catch (error) {
+                showError('Error processing invoice. Please try again.');
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                btnText.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden');
+                extractBtn.disabled = true;
+            } else {
+                btnText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                extractBtn.disabled = !selectedFile;
+            }
+        }
+
+        function displayResults(metadata, items) {
+            // Display metadata
+            document.getElementById('invoice-number').textContent = metadata.invoice_number || '';
+            document.getElementById('invoice-date').textContent = metadata.date || '';
+            document.getElementById('vendor-name').textContent = metadata.vendor_name || '';
+            document.getElementById('vendor-address').textContent = metadata.vendor_address || '';
+            document.getElementById('customer-name').textContent = metadata.customer_name || '';
+            document.getElementById('customer-address').textContent = metadata.customer_address || '';
+            document.getElementById('total-amount').textContent = metadata.total_amount || '';
+            document.getElementById('tax-total').textContent = metadata.tax_total || '';
+            
+            metadataSection.classList.remove('hidden');
+
+            // Display items
+            const itemsTbody = document.getElementById('items-tbody');
+            itemsTbody.innerHTML = '';
+            
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="px-4 py-2 text-sm text-gray-600">${item.item_name || ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${item.quantity || ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${item.unit_price || ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${item.tax_amount || ''}</td>
+                    <td class="px-4 py-2 text-sm text-gray-600">${item.total || ''}</td>
+                `;
+                itemsTbody.appendChild(row);
+            });
+            
+            itemsSection.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideResults() {
+            errorMessage.classList.add('hidden');
+            metadataSection.classList.add('hidden');
+            itemsSection.classList.add('hidden');
+        }
+
+        // Initialize button state
+        extractBtn.disabled = true;
+    </script>
+</body>
+</html>
