@@ -50,7 +50,7 @@ cd invoice_system
 1.  **Run the application:**
 
     ```bash
-    flask run
+    python3 app.py
     ```
 
 2.  **Open your browser and navigate to:**
@@ -72,10 +72,6 @@ cd invoice_system
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## ⚠️ Disclaimer
-
-This application is for educational and research purposes only. It should not be used as a substitute for professional medical diagnosis. Always consult with qualified healthcare professionals for medical decisions.
 
 ## Support
 
